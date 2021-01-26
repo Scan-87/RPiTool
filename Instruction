@@ -1,0 +1,66 @@
+Первоначальная настройка
+Для начала необходимо записать образ операционной системы на sd-карту. Проще всего сделать через официальную утилиту Imager
+В случае Pi Zero W рекомендуется выбрать Raspbian 32 bit
+В случае возниконовения ошибок при записи - запустить Imager в режиме Erase, для соответствующего форматирования
+
+В папке Boot отредактировать файлы:
+config.txt - добавить в конец файла   dtoverlay=dwc2
+cmdline.txt - после rootwait вставить   modules-load=dwc2,g_ether   Важно! Разделить вставленный текст одним пробелом с каждой стороны
+создать пустой файл без расширения с именем   ssh
+создать файл wpa_supplicant.conf со следующим содержимым:
+
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=RU
+
+network={
+  ssid="имя точки доступа"
+  psk="пароль от точки доступа"
+  key-mgmt=WPA-PSK
+  }
+  
+Вставить карту в Raspberry Pi и подключить кабель питания. Первая загрузка займет несколько минут. Можно ориентироваться по миганию зеленого светодиода
+Теперь можно подключится к устройству по ssh с логином pi и паролем raspberry
+sudo apt update 
+sudo apt upgrade -y
+reboot
+
+
+
+Настройка режима точки доступа
+sudo apt install dnsmasq hostapd
+mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+vim dnsmasq.conf
+  interface=wlan0
+  dhcp-range=10.0.0.10,10.0.0.30,255.255.255.0,24h
+  
+vim /etc/hostapd/hostapd.conf
+  interface=wlan0
+  driver=nl80211
+  ssid=имя_точки_доступа
+  hw_mode=g
+  channel=1
+  wmm_enabled=0
+  macaddr_acl=0
+  auth_algs=1
+  ignore_broadcast_ssid=0
+  wpa=0
+  wpa_passphrase=пароль_точки_доступа
+  wpa_key_mgmt=WPA-PSK
+  wpa_pairwise=TKIP
+  rsn_pairwise=CCMP
+  country_code=RU
+  
+vim /etc/network/interfaces
+  auto wlan0
+  iface wlan0 inet static
+    address 10.0.0.1
+    netmask 255.255.255.0
+    
+sudo systemctl start dnsmasq
+sudo systemctl start hostapd
+sudo service networking restart
+
+Если возникла проблема "Unit hostapd.service is masked"
+sudo systemctl unmask hostapd
+sudo systemctl start hostapd
